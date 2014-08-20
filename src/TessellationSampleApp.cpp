@@ -3,6 +3,8 @@
 #include "cinder/gl/gl.h"
 #include "cinder/gl/GlslProg.h"
 #include "cinder/gl/Batch.h"
+#include "cinder/gl/Vao.h"
+#include "cinder/gl/Vbo.h"
 #include "cinder/Utilities.h"
 #include "cinder/Matrix33.h"
 #include "cinder/Matrix44.h"
@@ -33,10 +35,10 @@ typedef struct
     Vector4 position;
 } Vertex;
 
-class PipelineSampleApp : public AppNative {
+class TessellationSampleApp : public AppNative {
 public:
-//	PipelineSampleApp();
-	~PipelineSampleApp();
+//	TessellationSampleApp();
+	~TessellationSampleApp();
 	void setup();
 	void mouseMove( MouseEvent event );
 	void mouseDown( MouseEvent event );
@@ -50,7 +52,6 @@ public:
 	
 private:
 	void loadShader();
-	void loadBufferData();
 	void createIcosahedron();
 	
 	GLuint compileShader( const GLenum type, const string& path );
@@ -63,8 +64,9 @@ private:
 	Vec2f mMousePos;
     
     GLuint shaderProgram;
-    GLuint vertexArrayObject;
-    GLuint vertexBuffer;
+	gl::VaoRef vertexArrayObject;
+	gl::VboRef vertexBufferObject;
+	gl::VboRef indexBufferObject;
 	
 	GLuint mVertBuffer;
 	GLuint mIndexBuffer;
@@ -87,15 +89,15 @@ private:
 	Matrix33f mNormalMatrix;
 };
 
-PipelineSampleApp::~PipelineSampleApp()
+TessellationSampleApp::~TessellationSampleApp()
 {
 	glDeleteProgram(shaderProgram);
-    //GetError();
-    glDeleteBuffers(1, &vertexBuffer);
-    //GetError();
+    
+    //glDeleteBuffers(1, &vertexBuffer);
+    
 }
 
-void PipelineSampleApp::setup()
+void TessellationSampleApp::setup()
 {
 	// setup shader
 //	try {
@@ -113,6 +115,10 @@ void PipelineSampleApp::setup()
 //	mBatch->vertex( Vec2f::zero() );
 //	mBatch->color( 1.0f, 0.0f, 0.0f );
 	
+	vertexArrayObject = gl::Vao::create();
+	vertexBufferObject = gl::Vbo::create(GL_ARRAY_BUFFER);
+	indexBufferObject = gl::Vbo::create(GL_ELEMENT_ARRAY_BUFFER);
+	
 	mTessellationInner = mTessellationOuter = 3;
 	
 	this->loadShader();
@@ -125,19 +131,19 @@ void PipelineSampleApp::setup()
 	mMayaCam.setCurrentCam( cam );
 }
 
-void PipelineSampleApp::mouseMove( MouseEvent event )
+void TessellationSampleApp::mouseMove( MouseEvent event )
 {
 	// keep track of the mouse
 	mMousePos = event.getPos();
 }
 
-void PipelineSampleApp::mouseDown( MouseEvent event )
+void TessellationSampleApp::mouseDown( MouseEvent event )
 {
 	// let the camera handle the interaction
 	mMayaCam.mouseDown( event.getPos() );
 }
 
-void PipelineSampleApp::mouseDrag( MouseEvent event )
+void TessellationSampleApp::mouseDrag( MouseEvent event )
 {
 	// keep track of the mouse
 	mMousePos = event.getPos();
@@ -146,7 +152,7 @@ void PipelineSampleApp::mouseDrag( MouseEvent event )
 	mMayaCam.mouseDrag( event.getPos(), event.isLeftDown(), event.isMiddleDown(), event.isRightDown() );
 }
 
-void PipelineSampleApp::resize()
+void TessellationSampleApp::resize()
 {
 	// adjust aspect ratio
 	CameraPersp cam = mMayaCam.getCamera();
@@ -154,7 +160,7 @@ void PipelineSampleApp::resize()
 	mMayaCam.setCurrentCam( cam );
 }
 
-void PipelineSampleApp::keyDown( KeyEvent event )
+void TessellationSampleApp::keyDown( KeyEvent event )
 {
 	if( event.getCode() == KeyEvent::KEY_UP ){
 		mTessellationInner++;
@@ -175,7 +181,7 @@ void PipelineSampleApp::keyDown( KeyEvent event )
 	}
 }
 
-GLuint PipelineSampleApp::compileShader(const GLenum type, const string& path)
+GLuint TessellationSampleApp::compileShader(const GLenum type, const string& path)
 {
 	GLuint shader;
     // load file...
@@ -183,22 +189,22 @@ GLuint PipelineSampleApp::compileShader(const GLenum type, const string& path)
 	const GLchar* source = (GLchar*) shader_source.c_str();
     
     shader = glCreateShader(type);
-    //GetError();
+    
     glShaderSource(shader, 1, &source, NULL);
-    //GetError();
+    
     glCompileShader(shader);
-    //GetError();
+    
     
 #if defined(DEBUG)
 	GLint logLength;
 
 	glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &logLength);
-	//GetError();
+	
 	if (logLength > 0)
 	{
 		GLchar *log = (GLchar*)malloc((size_t)logLength);
 		glGetShaderInfoLog(shader, logLength, &logLength, log);
-		//GetError();
+		
 		console() << "Shader compilation failed with error:" << log << std::endl;
 		free(log);
 		shutdown();
@@ -207,7 +213,6 @@ GLuint PipelineSampleApp::compileShader(const GLenum type, const string& path)
 
 	GLint status;
 	glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
-	//GetError();
 	if (0 == status)
 	{
 		glDeleteShader(shader);
@@ -218,7 +223,7 @@ GLuint PipelineSampleApp::compileShader(const GLenum type, const string& path)
 	return shader;
 }
 
-void PipelineSampleApp::loadShader()
+void TessellationSampleApp::loadShader()
 {
 	GLuint vertexShader;
     GLuint fragmentShader;
@@ -232,24 +237,16 @@ void PipelineSampleApp::loadShader()
 	tessCtrlShader = this->compileShader(GL_TESS_CONTROL_SHADER, "shaders/pipeline_tess_c.glsl");
 	tessEvalShader = this->compileShader(GL_TESS_EVALUATION_SHADER, "shaders/pipeline_tess_e.glsl");
 	
-//
     if (0 != vertexShader && 0 != fragmentShader && 0 != geometryShader && 0 != tessCtrlShader && 0 != tessEvalShader)
     {
 		shaderProgram = glCreateProgram();
-		//GetError();
 
 		glAttachShader(shaderProgram, vertexShader  );
-		//GetError();
 		glAttachShader(shaderProgram, fragmentShader);
-		//GetError();
 		glAttachShader(shaderProgram, geometryShader);
-		//GetError();
 		glAttachShader(shaderProgram, tessCtrlShader);
-		//GetError();
 		glAttachShader(shaderProgram, tessEvalShader);
-		//GetError();
-
-
+		
 		glBindFragDataLocation(shaderProgram, 0, "FragColor");
 
 		this->linkProgram(shaderProgram);
@@ -266,18 +263,14 @@ void PipelineSampleApp::loadShader()
 
 		// get vert attributes
 		mPositionIndex = glGetAttribLocation( shaderProgram, "Position" );
-		//GetError();
+		
 
 		glDeleteShader(vertexShader);
-		//GetError();
 		glDeleteShader(fragmentShader);
-		//GetError();
 		glDeleteShader(geometryShader);
-		//GetError();
 		glDeleteShader(tessCtrlShader);
-		//GetError();
 		glDeleteShader(tessEvalShader);
-		//GetError();
+		
     }
     else {
 		//[NSException raise:kFailedToInitialiseGLException format:@"Shader compilation failed."];
@@ -286,10 +279,10 @@ void PipelineSampleApp::loadShader()
     }
 }
 
-void PipelineSampleApp::linkProgram( const GLuint program )
+void TessellationSampleApp::linkProgram( const GLuint program )
 {
 	glLinkProgram(program);
-	//GetError();
+	
 
 #if defined(DEBUG)
 //	GLint logLength;
@@ -308,7 +301,7 @@ void PipelineSampleApp::linkProgram( const GLuint program )
     
     GLint status;
     glGetProgramiv(program, GL_LINK_STATUS, &status);
-    //GetError();
+    
     if (0 == status)
     {
         //[NSException raise:kFailedToInitialiseGLException format:@"Failed to link shader program"];
@@ -317,19 +310,19 @@ void PipelineSampleApp::linkProgram( const GLuint program )
     }
 }
 
-void PipelineSampleApp::validateProgram( const GLuint program )
+void TessellationSampleApp::validateProgram( const GLuint program )
 {
 	GLint logLength;
 
 	glValidateProgram(program);
-	//GetError();
+	
 	glGetProgramiv(program, GL_INFO_LOG_LENGTH, &logLength);
-	//GetError();
+	
 	if (logLength > 0)
 	{
 		GLchar* log = (GLchar*) malloc((size_t)logLength);
 		glGetProgramInfoLog(program, logLength, &logLength, log);
-		//GetError();
+		
 		//NSLog(@"Program validation produced errors:\n%s", log);
 		console() << "Program validation produced errors:" << log << std::endl;
 		free(log);
@@ -338,7 +331,7 @@ void PipelineSampleApp::validateProgram( const GLuint program )
 
 	GLint status;
 	glGetProgramiv(program, GL_VALIDATE_STATUS, &status);
-	//GetError();
+	
 	if (0 == status)
 	{
 		//[NSException raise:kFailedToInitialiseGLException format:@"Failed to link shader program"];
@@ -347,37 +340,7 @@ void PipelineSampleApp::validateProgram( const GLuint program )
 	}
 }
 
-void PipelineSampleApp::loadBufferData()
-{
-	float size = 1.0f;
-	Vertex vertexData[6] = {
-        { .position = { .x=-size, .y=-size, .z=0.0, .w=1.0 } },
-        { .position = { .x=-size, .y= size, .z=0.0, .w=1.0 } },
-        { .position = { .x= size, .y= size, .z=0.0, .w=1.0 } },
-        { .position = { .x=-size, .y=-size, .z=0.0, .w=1.0 } },
-        { .position = { .x= size, .y= size, .z=0.0, .w=1.0 } },
-        { .position = { .x= size, .y=-size, .z=0.0, .w=1.0 } }
-    };
-    
-    glGenVertexArrays(1, &vertexArrayObject);
-    //GetError();
-    glBindVertexArray(vertexArrayObject);
-    //GetError();
-    
-    glGenBuffers(1, &vertexBuffer);
-    //GetError();
-    glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
-    //GetError();
-    glBufferData(GL_ARRAY_BUFFER, 6 * sizeof(Vertex), vertexData, GL_STATIC_DRAW);
-    //GetError();
-    
-	glEnableVertexAttribArray((GLuint)mPositionIndex);
-	//GetError();
-	glVertexAttribPointer((GLuint)mPositionIndex, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), (const GLvoid *)offsetof(Vertex, position));
-	//GetError();
-}
-
-void PipelineSampleApp::createIcosahedron()
+void TessellationSampleApp::createIcosahedron()
 {
 	const int faces[] = {
 		2, 1, 0,
@@ -422,35 +385,27 @@ void PipelineSampleApp::createIcosahedron()
 	
 	mIndexCount = sizeof(faces) / sizeof(faces[0]);
 	
-	// Create the VAO:
-	GLuint vao;
-	glGenVertexArrays(1, &vao);
-	glBindVertexArray(vao);
-	//GetError();
+	vertexArrayObject->bind();
 	
 	// Create the VBO for positions:
 	GLsizei stride = 3 * sizeof(float);
-	glGenBuffers(1, &mVertBuffer);
-	glBindBuffer(GL_ARRAY_BUFFER, mVertBuffer);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STATIC_DRAW);
-	glEnableVertexAttribArray(mPositionIndex);
-	glVertexAttribPointer(mPositionIndex, 3, GL_FLOAT, GL_FALSE, stride, 0);
-	//GetError();
+	vertexBufferObject->bind();
+	vertexBufferObject->bufferData(sizeof(verts), verts, GL_STATIC_DRAW);
+	gl::enableVertexAttribArray( (GLuint)mPositionIndex );
+	gl::vertexAttribPointer( (GLuint)mPositionIndex, 3, GL_FLOAT, GL_FALSE, stride, 0 );
 	
 	// Create the VBO for indices:
-	glGenBuffers(1, &mIndexBuffer);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mIndexBuffer);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(faces), faces, GL_STATIC_DRAW);
-	//GetError();
+	indexBufferObject->bind();
+	indexBufferObject->bufferData( sizeof(faces), faces, GL_STATIC_DRAW );
 }
 
-void PipelineSampleApp::update()
+void TessellationSampleApp::update()
 {
 	mNormalMatrix = mMayaCam.getCamera().getViewMatrix().subMatrix33(0,0);
 	mNormalMatrix.transpose();
 }
 
-void PipelineSampleApp::draw()
+void TessellationSampleApp::draw()
 {
 	// clear out the window with black
 //	gl::clear( Color( 0, 0, 0 ) );
@@ -489,4 +444,4 @@ void PipelineSampleApp::draw()
     glUseProgram( 0 );
 }
 
-CINDER_APP_NATIVE( PipelineSampleApp, RendererGl )
+CINDER_APP_NATIVE( TessellationSampleApp, RendererGl )

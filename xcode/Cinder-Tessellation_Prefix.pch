@@ -3,12 +3,17 @@
 #endif
 
 #if defined( __cplusplus )
-	#include "cinder/Cinder.h"
-	
 	#include "cinder/app/AppBasic.h"
+	#include "cinder/app/RendererGl.h"
+	#include "cinder/Cinder.h"
+	#include "cinder/Utilities.h"
+	#include "cinder/MayaCamUI.h"
+
 	
 	#include "cinder/gl/gl.h"
-	
+	#include "cinder/gl/GlslProg.h"
+	#include "cinder/gl/Batch.h"
+
 	#include "cinder/CinderMath.h"
 	#include "cinder/Matrix.h"
 	#include "cinder/Vector.h"
