@@ -56,7 +56,7 @@ private:
 	
 	GLuint compileShader( const GLenum type, const string& path );
 	void linkProgram( const GLuint program );
-	void validateProgram( const GLuint program );
+//	void validateProgram( const GLuint program );
 	
 	gl::VertBatchRef	mBatch;
 	gl::GlslProgRef		mGlsl;
@@ -310,6 +310,7 @@ void TessellationSampleApp::linkProgram( const GLuint program )
     }
 }
 
+/*
 void TessellationSampleApp::validateProgram( const GLuint program )
 {
 	GLint logLength;
@@ -339,6 +340,7 @@ void TessellationSampleApp::validateProgram( const GLuint program )
 		shutdown();
 	}
 }
+*/
 
 void TessellationSampleApp::createIcosahedron()
 {
