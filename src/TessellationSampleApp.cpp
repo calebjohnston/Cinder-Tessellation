@@ -11,13 +11,19 @@
 #include "cinder/Matrix44.h"
 #include "cinder/MayaCamUI.h"
 #include "cinder/Vector.h"
+#include "cinder/params/Params.h"
 
 using namespace ci;
 using namespace ci::app;
 using namespace std;
 
+// TODO: add adaptive LOD via tessellation shaders
+// TODO: add multi-texturing (bump mapping)
+// TODO: add vertex attributes (tangent spaces)
+// TODO: add multi-pass rendering (depth of field?)
+
 class TessellationSampleApp : public AppNative {
-public:
+  public:
 	
 	void setup();
 	void mouseMove( MouseEvent event );
@@ -30,7 +36,7 @@ public:
 	void update();
 	void draw();
 	
-private:
+  private:
 	gl::VboMeshRef createIcosahedron();
 	
 	gl::BatchRef		mBatch;
@@ -38,32 +44,41 @@ private:
 	gl::GlslProgRef		mGlsl;
 	
 	Vec2f mMousePos;
-	
-	GLuint mTessellationInner;
-	GLuint mTessellationOuter;
-	
 	MayaCamUI mMayaCam;
 	Matrix33f mNormalMatrix;
+	
+	bool mDrawWireframe;
+	int32_t mTessellationInner;
+	int32_t mTessellationOuter;
+	params::InterfaceGlRef	mParams;
 };
 
 void TessellationSampleApp::setup()
 {
 	// setup shader
 	try {
-		mGlsl = gl::GlslProg::create( gl::GlslProg::Format()
-									 .vertex( loadAsset( "shaders/pipeline_vert.glsl" ) )
-									 .tessellationCtrl( loadAsset( "shaders/pipeline_tess_c.glsl" ) )
-									 .tessellationEval( loadAsset( "shaders/pipeline_tess_e.glsl" ) )
-									 .geometry( loadAsset( "shaders/pipeline_geo.glsl" ) )
-									 .fragment( loadAsset( "shaders/pipeline_frag.glsl" ) ) );
+//		mGlsl = gl::GlslProg::create( gl::GlslProg::Format()
+//									 .vertex( loadAsset( "shaders/pipeline_vert.glsl" ) )
+//									 .tessellationCtrl( loadAsset( "shaders/pipeline_tess_c.glsl" ) )
+//									 .tessellationEval( loadAsset( "shaders/pipeline_tess_e.glsl" ) )
+//									 .geometry( loadAsset( "shaders/pipeline_geo.glsl" ) )
+//									 .fragment( loadAsset( "shaders/pipeline_frag.glsl" ) ) );
+		mGlsl = gl::GlslProg::create( loadAsset( "shaders/pipeline_vert.glsl" ),
+									  loadAsset( "shaders/pipeline_frag.glsl" ),
+									  loadAsset( "shaders/pipeline_geo.glsl" ),
+									  loadAsset( "shaders/pipeline_tess_e.glsl" ),
+									  loadAsset( "shaders/pipeline_tess_c.glsl" ) );
 	}
 	catch( gl::GlslProgCompileExc ex ) {
 		cout << ex.what() << endl;
 		shutdown();
 	}
 	
+	mDrawWireframe = false;
+	
 	// initialize uniform values
 	mTessellationInner = mTessellationOuter = 3;
+	mDrawWireframe = true;
 	
 	// generate vbo mesh
 	mMesh = createIcosahedron();
@@ -73,11 +88,18 @@ void TessellationSampleApp::setup()
 	attributeMap.insert( pair<geom::Attrib,string>( geom::Attrib::POSITION, "Position" ) );
 	mBatch = gl::Batch::create(mMesh, mGlsl, attributeMap);
 	
+	// create camera to view tessellation geometry
 	CameraPersp cam;
-	cam.setEyePoint( Vec3f(5.0f, 10.0f, 10.0f) );
-	cam.setCenterOfInterestPoint( Vec3f(0.0f, 2.5f, 0.0f) );
+	cam.setEyePoint( Vec3f(7.0f, 7.0f, 7.0f) );
+	cam.setCenterOfInterestPoint( Vec3f::zero() );
 	cam.setPerspective( 60.0f, getWindowAspectRatio(), 1.0f, 1000.0f );
 	mMayaCam.setCurrentCam( cam );
+	
+	// setup parameters
+	mParams = params::InterfaceGl::create( "Settings", Vec2i( 200, 200 ) );
+	mParams->addParam( "Wireframe", &mDrawWireframe );
+	mParams->addParam( "Tessellation inner level", &mTessellationInner, "min=1" );
+	mParams->addParam( "Tessellation outer level", &mTessellationOuter, "min=1" );
 }
 
 void TessellationSampleApp::mouseMove( MouseEvent event )
@@ -118,10 +140,10 @@ void TessellationSampleApp::keyDown( KeyEvent event )
 		if (mTessellationInner > 1)
 			mTessellationInner--;
 	}
-	else if( event.getCode() == KeyEvent::KEY_LEFT ){
+	else if( event.getCode() == KeyEvent::KEY_RIGHT ){
 		mTessellationOuter++;
 	}
-	else if( event.getCode() == KeyEvent::KEY_RIGHT ){
+	else if( event.getCode() == KeyEvent::KEY_LEFT ){
 		if (mTessellationOuter > 1)
 			mTessellationOuter--;
 	}
@@ -188,7 +210,7 @@ gl::VboMeshRef TessellationSampleApp::createIcosahedron()
 //	attributeMap.insert( pair<geom::Attrib,string>( geom::Attrib::POSITION, "Position" ) );
 //	mIcosahedronMesh->buildVao( mGlsl, attributeMap );
 	
-	cinder::gl::checkError();
+	gl::checkError();
 	
 	return vboMesh;
 }
@@ -204,6 +226,7 @@ void TessellationSampleApp::draw()
 	// clear out the window with black
 	gl::clear( ColorA(0.7f, 0.6f, 0.5f, 1.0f) );
 	
+	// bind uniforms...
 	gl::ScopedGlslProg glslProg( mGlsl );
 	mGlsl->uniform("Projection", mMayaCam.getCamera().getProjectionMatrix());
 	mGlsl->uniform("Modelview", mMayaCam.getCamera().getViewMatrix());
@@ -211,14 +234,25 @@ void TessellationSampleApp::draw()
 	mGlsl->uniform("LightPosition", Vec3f(0.25, 0.25, 1));
 	mGlsl->uniform("AmbientMaterial", Vec3f(0.04f, 0.04f, 0.04f));
 	mGlsl->uniform("DiffuseMaterial", Vec3f(0, 0.75, 0.75));
-	mGlsl->uniform("TessLevelInner", static_cast<float>(mTessellationInner) );
-	mGlsl->uniform("TessLevelOuter", static_cast<float>(mTessellationOuter) );
+	mGlsl->uniform("TessLevelInner", mTessellationInner );
+	mGlsl->uniform("TessLevelOuter", mTessellationOuter );
 	
-	gl::enableWireframe();
-	mBatch->draw();
-	gl::disableWireframe();
+	if( mDrawWireframe ){
+		gl::enableWireframe();
+		mBatch->draw();
+		gl::disableWireframe();
+	}
+	else {
+		gl::enable(GL_DEPTH_TEST);
+		gl::enable(GL_CULL_FACE);
+		mBatch->draw();
+		gl::disable(GL_DEPTH_TEST);
+		gl::disable(GL_CULL_FACE);
+	}
+
+	mParams->draw();
 	
-	cinder::gl::checkError();
+	gl::checkError();
 }
 
 CINDER_APP_NATIVE( TessellationSampleApp, RendererGl )

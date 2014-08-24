@@ -1,7 +1,7 @@
 #version 400 core
 
-uniform float TessLevelInner;
-uniform float TessLevelOuter;
+uniform int TessLevelInner;
+uniform int TessLevelOuter;
 
 // The following layout directive overrides the glPatchParameteri(GL_PATCH_VERTICES, n) command.
 // Valid values are of the range: [32,GL_MAX_PATCH_VERTICES)
