@@ -1,13 +1,10 @@
 .DS_Store
 
-/xcode/PipelineSample.xcodeproj/xcuserdata/
-
-/xcode/PipelineSample.xcodeproj/project.xcworkspace/xcuserdata/
-
 /xcode/Cinder-Tessellation.xcodeproj/xcuserdata/
-
 /xcode/Cinder-Tessellation.xcodeproj/project.xcworkspace/xcuserdata/
-
 /xcode/Cinder-Tessellation.xcodeproj/project.xcworkspace/xcshareddata/
-
 /xcode/build/
+
+*.tlog
+/vc2012/Debug/
+/vc2012/Release/
