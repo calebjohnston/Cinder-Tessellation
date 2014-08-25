@@ -1,3 +1,4 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -13,6 +14,7 @@
     <ProjectGuid>{71B5E397-0025-4370-833B-D9A81F37731A}</ProjectGuid>
     <RootNamespace>PipelineSample</RootNamespace>
     <Keyword>Win32Proj</Keyword>
+    <ProjectName>TessellationSample</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
@@ -90,7 +92,7 @@
       <AdditionalIncludeDirectories>"..\..\Cinder\cinder_next\include";..\include</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>cinder-$(PlatformToolset).lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>OpenGL32.lib;cinder-$(PlatformToolset).lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>"..\..\Cinder\cinder_next\lib\msw\$(PlatformTarget)"</AdditionalLibraryDirectories>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <GenerateMapFile>true</GenerateMapFile>
@@ -106,10 +108,10 @@
     <ResourceCompile Include="Resources.rc" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\src\PipelineSampleApp.cpp" />
+    <ClInclude Include="..\include\Resources.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\include\Resources.h" />
+    <ClCompile Include="..\src\TessellationSampleApp.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />
