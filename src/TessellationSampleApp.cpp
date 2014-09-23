@@ -6,10 +6,11 @@
 #include "cinder/gl/Vao.h"
 #include "cinder/gl/Vbo.h"
 #include "cinder/gl/VboMesh.h"
-#include "cinder/Utilities.h"
 #include "cinder/Matrix33.h"
 #include "cinder/Matrix44.h"
 #include "cinder/MayaCamUI.h"
+#include "cinder/ObjLoader.h"
+#include "cinder/Utilities.h"
 #include "cinder/Vector.h"
 #include "cinder/params/Params.h"
 
@@ -21,6 +22,13 @@ using namespace std;
 // TODO: add multi-texturing (bump mapping)
 // TODO: add vertex attributes (tangent spaces)
 // TODO: add multi-pass rendering (depth of field?)
+
+// After introducing a object-tangent space and texture coordinates the rendering no longer works.
+// Produces GL_INVALID_OPERATION upon Batch drawing! Changes are:
+//  * added new vertex attribs to shader pipeline.
+//  * loading the OBJ icosahedron mesh which includes normals and texture coordinates
+//  * calculating tangents and bitangents using TriMesh
+//  * updated geom::Attrib <-> string matching for connecting GLSL program to batch
 
 class TessellationSampleApp : public AppNative {
   public:
@@ -37,11 +45,13 @@ class TessellationSampleApp : public AppNative {
 	void draw();
 	
   private:
+	gl::VboMeshRef loadMesh(const std::string& filename);
 	gl::VboMeshRef createIcosahedron();
 	
 	gl::BatchRef		mBatch;
 	gl::VboMeshRef		mMesh;
 	gl::GlslProgRef		mGlsl;
+	gl::TextureRef		mTexture;
 	
 	Vec2f mMousePos;
 	MayaCamUI mMayaCam;
@@ -74,18 +84,22 @@ void TessellationSampleApp::setup()
 		shutdown();
 	}
 	
-	mDrawWireframe = false;
-	
 	// initialize uniform values
 	mTessellationInner = mTessellationOuter = 3;
 	mDrawWireframe = true;
 	
 	// generate vbo mesh
-	mMesh = createIcosahedron();
+	//mMesh = createIcosahedron();
+	mMesh = loadMesh( "icosahedron-export.obj" );
+	mTexture = gl::Texture::create( loadImage( loadAsset( "earth.gif" ) ) );
 	
 	// create batch for mesh and shader
 	map<geom::Attrib,string> attributeMap;
 	attributeMap.insert( pair<geom::Attrib,string>( geom::Attrib::POSITION, "Position" ) );
+	attributeMap.insert( pair<geom::Attrib,string>( geom::Attrib::TANGENT, "Tangent" ) );
+	attributeMap.insert( pair<geom::Attrib,string>( geom::Attrib::BITANGENT, "Bitangent" ) );
+	attributeMap.insert( pair<geom::Attrib,string>( geom::Attrib::NORMAL, "Normal" ) );
+	attributeMap.insert( pair<geom::Attrib,string>( geom::Attrib::TEX_COORD_0, "Texcoord" ) );
 	mBatch = gl::Batch::create(mMesh, mGlsl, attributeMap);
 	
 	// create camera to view tessellation geometry
@@ -150,6 +164,20 @@ void TessellationSampleApp::keyDown( KeyEvent event )
 	else if( event.getCode() == KeyEvent::KEY_f ){
 		setFullScreen( !isFullScreen() );
 	}
+}
+
+
+gl::VboMeshRef TessellationSampleApp::loadMesh( const string& filename )
+{
+	ObjLoader loader( (DataSourceRef)loadAsset( filename ) );
+	TriMeshRef trimesh = TriMesh::create( loader );
+	trimesh->recalculateTangents();
+	trimesh->recalculateBitangents();
+	gl::VboMeshRef vboMesh = gl::VboMesh::create( dynamic_cast<const geom::Source&>( *trimesh ) );
+	
+	gl::checkError();
+	
+	return vboMesh;
 }
 
 gl::VboMeshRef TessellationSampleApp::createIcosahedron()
@@ -245,14 +273,12 @@ void TessellationSampleApp::draw()
 	else {
 		gl::enable(GL_DEPTH_TEST);
 		gl::enable(GL_CULL_FACE);
-		mBatch->draw();
+		mBatch->draw();				// some how produces GL_INVALID_OPERATION
 		gl::disable(GL_DEPTH_TEST);
 		gl::disable(GL_CULL_FACE);
 	}
 
 	mParams->draw();
-	
-	gl::checkError();
 }
 
 CINDER_APP_NATIVE( TessellationSampleApp, RendererGl )

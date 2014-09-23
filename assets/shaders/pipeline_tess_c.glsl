@@ -10,7 +10,15 @@ layout(vertices = 3) out;
 // both of the following arrays will always only have as many entries as the above vertices
 // declaration specifies.
 in vec3 vPosition[];
+in vec3 vTangent[];
+in vec3 vBitangent[];
+in vec3 vNormal[];
+in vec2 vTexcoord[];
 out vec3 tcPosition[];
+out vec3 tcTangent[];
+out vec3 tcBitangent[];
+out vec3 tcNormal[];
+out vec2 tcTexcoord[];
 
 // built-in inputs for this stage:
 //   in gl_PerVertex
@@ -39,6 +47,10 @@ void main()
 {
     // the invocation ID is the unique identifier for this particular invocation
 	tcPosition[ID] = vPosition[ID];
+	tcTangent[ID] = vTangent[ID];
+	tcBitangent[ID] = vBitangent[ID];
+	tcNormal[ID] = vNormal[ID];
+	tcTexcoord[ID] = vTexcoord[ID];
 	
 	// gl_TessLevelInner and gl_TessLevelOuter values will determine the amount of
 	// tessellation applied to the patch.

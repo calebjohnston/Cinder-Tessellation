@@ -17,6 +17,11 @@ in vec3 gTriDistance;
 in vec3 gPatchDistance;
 in float gPrimitive;
 
+in vec4 gTangent;
+in vec4 gBitangent;
+in vec4 gNormal;
+in vec2 gTexcoord;
+
 out vec4 FragColor;
 
 // built-in inputs for this stage:

@@ -12,8 +12,17 @@ layout(triangles, invocations = 1) in;
 // valid values for max_vertices is: [256, MAX_GEOMETRY_OUTPUT_VERTICES)
 layout(triangle_strip, max_vertices = 3) out;
 
-in vec3 tePosition[3];
+in vec4 tePosition[3];
+in vec4 teTangent[3];
+in vec4 teBitangent[3];
+in vec4 teNormal[3];
+in vec2 teTexcoord[3];
 in vec3 tePatchDistance[3];
+
+out vec4 gTangent;
+out vec4 gBitangent;
+out vec4 gNormal;
+out vec2 gTexcoord;
 
 out vec3 gFacetNormal;
 out vec3 gPatchDistance;
@@ -49,23 +58,36 @@ out vec3 gTriDistance;
 
 void main()
 {
-    vec3 A = tePosition[2] - tePosition[0];
-    vec3 B = tePosition[1] - tePosition[0];
-    gFacetNormal = NormalMatrix * normalize(cross(A, B));
+    vec4 A = tePosition[2] - tePosition[0];
+    vec4 B = tePosition[1] - tePosition[0];
+    gFacetNormal = NormalMatrix * normalize(cross(A.xyz, B.xyz));
     
 	// the number of times EmitVertex() is called before EndPrimitive()
 	// must match the number of vertices for the output primitive type specfied above.
 	
     gPatchDistance = tePatchDistance[0];
     gTriDistance = vec3(1, 0, 0);
+	
+	gTangent = teTangent[0];
+	gBitangent = teBitangent[0];
+	gNormal = teNormal[0];
+	gTexcoord = teTexcoord[0];
     gl_Position = gl_in[0].gl_Position; EmitVertex();
 
     gPatchDistance = tePatchDistance[1];
     gTriDistance = vec3(0, 1, 0);
+	gTangent = teTangent[1];
+	gBitangent = teBitangent[1];
+	gNormal = teNormal[1];
+	gTexcoord = teTexcoord[1];
     gl_Position = gl_in[1].gl_Position; EmitVertex();
 
     gPatchDistance = tePatchDistance[2];
     gTriDistance = vec3(0, 0, 1);
+	gTangent = teTangent[2];
+	gBitangent = teBitangent[2];
+	gNormal = teNormal[2];
+	gTexcoord = teTexcoord[2];
     gl_Position = gl_in[2].gl_Position; EmitVertex();
 
     EndPrimitive();

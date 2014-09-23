@@ -1,7 +1,16 @@
 #version 400 core
 
-in vec4 Position;
+in vec3 Position;
+in vec3 Tangent;
+in vec3 Bitangent;
+in vec3 Normal;
+in vec2 Texcoord;
+
 out vec3 vPosition;
+out vec3 vTangent;
+out vec3 vBitangent;
+out vec3 vNormal;
+out vec2 vTexcoord;
 
 // built-in inputs for this stage:
 //   in int gl_VertexID;
@@ -18,4 +27,8 @@ out vec3 vPosition;
 void main()
 {
     vPosition = Position.xyz;
+    vTangent = Tangent.xyz;
+    vBitangent = Bitangent.xyz;
+    vNormal = Normal.xyz;
+    vTexcoord = Texcoord.xy;
 }
